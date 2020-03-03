@@ -17,9 +17,6 @@ tf.disable_v2_behavior()
 img_size = 416
 inputs = tf.placeholder(tf.float32, [None, img_size, img_size, 3])
 model = nets.YOLOv3COCO(inputs, nets.Darknet19)
-#TODO: [nikola1011] Try these models out, or delete them
-#model = nets.YOLOv2(inputs, nets.Darknet19)
-#model = nets.TinyYOLOv2VOC(inputs, nets.Darknet19)
 
 ct = CentroidTracker(maxDisappeared=5, maxDistance=50) # Look into 'CentroidTracker' for further info about parameters
 trackers = [] # List of all dlib trackers
@@ -28,12 +25,18 @@ skip_frames = 10 # Numbers of frames to skip from detecting
 confidence_level = 0.40 # The confidence level of a detection
 total = 0 # Total number of detected objects from classes of interest
 
-#TODO: [nikola1011] Add some video to local 'videos' folder and upload to GitHub. Trimm to some smaller size.
+#video_path = "/home/nikola/Videos/Beograd Live Streams/Beograd Com Live Stream - 1280 × 720 - 26m43.1s - 36m41.6s (AyGZHqv_g-k).mp4"
 #video_path = "/home/nikola/Videos/Relaxing highway traffic.mp4"
 #video_path = "/home/nikola/Videos/Road traffic video for object detection and tracking.mp4"
 #video_path = "/home/nikola/Videos/UK Motorway M25 Trucks, Lorries, Cars Highway.mp4"
-video_path = "/home/nikola/Videos/M6 Motorway Traffic.mp4"
+#video_path = "/home/nikola/Videos/M6 Motorway Traffic.mp4"
+video_path = os.getcwd() + "/videos/M6 Motorway Traffic - Short version.mp4"
 video_name = os.path.basename(video_path)
+
+print("Loading video {video_path}...".format(video_path=video_path))
+if not os.path.exists(video_path):
+    print("File does not exist. Exited.")
+    exit()
 
 # From https://github.com/experiencor/keras-yolo3/blob/master/yolo3_one_file_to_detect_them_all.py#L389
 # YoloV3 detects 80 classes represented below
@@ -60,6 +63,7 @@ with tf.Session() as sess:
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     #TODO: [nikola1011] Check this with latest python version (also update requirements.txt)
+    # Checked with Python 3.7.4 (it works)
     # Python 3.5.6 does not support f-strings (next line will generate syntax error)
     #print(f"Loaded {video_path}. Width: {width}, Height: {height}")
     print("Loaded {video_path}. Width: {width}, Height: {height}".format(video_path=video_path, width=width, height=height))
