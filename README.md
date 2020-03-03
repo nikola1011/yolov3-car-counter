@@ -8,4 +8,5 @@ The code is tested and run with Python 3.7.4 and Python 3.5.6 on Ubuntu 18.04.3 
 (Windows 10 platforms should also be able to run the project)
 ## Demo
 You can see the demo of the project via the gif below.
+
 ![Gif of a demo project could not be loaded](https://github.com/nikola1011/yolov3-car-counter/blob/master/demo-yolov3-dlib-window-rec.gif)
