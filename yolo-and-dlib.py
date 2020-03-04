@@ -20,16 +20,12 @@ model = nets.YOLOv3COCO(inputs, nets.Darknet19)
 
 ct = CentroidTracker(maxDisappeared=5, maxDistance=50) # Look into 'CentroidTracker' for further info about parameters
 trackers = [] # List of all dlib trackers
-trackableObjects = {} # TODO: [nikola1011] Explain this variable 
+trackableObjects = {} # Dictionary of trackable objects containing object's ID and its' corresponding centroid/s
 skip_frames = 10 # Numbers of frames to skip from detecting
 confidence_level = 0.40 # The confidence level of a detection
 total = 0 # Total number of detected objects from classes of interest
+use_original_video_size_as_output_size = True # Shows original video as output and not the 416x416 image that is used as yolov3 input (NOTE: Detection still happens with 416x416 img size but the output is displayed in original video size if this parameter is True)
 
-#video_path = "/home/nikola/Videos/Beograd Live Streams/Beograd Com Live Stream - 1280 × 720 - 26m43.1s - 36m41.6s (AyGZHqv_g-k).mp4"
-#video_path = "/home/nikola/Videos/Relaxing highway traffic.mp4"
-#video_path = "/home/nikola/Videos/Road traffic video for object detection and tracking.mp4"
-#video_path = "/home/nikola/Videos/UK Motorway M25 Trucks, Lorries, Cars Highway.mp4"
-#video_path = "/home/nikola/Videos/M6 Motorway Traffic.mp4"
 video_path = os.getcwd() + "/videos/M6 Motorway Traffic - Short version.mp4"
 video_name = os.path.basename(video_path)
 
@@ -40,7 +36,7 @@ if not os.path.exists(video_path):
 
 # From https://github.com/experiencor/keras-yolo3/blob/master/yolo3_one_file_to_detect_them_all.py#L389
 # YoloV3 detects 80 classes represented below
-labels = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", \
+all_classes = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", \
               "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", \
               "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", \
               "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", \
@@ -62,6 +58,27 @@ with tf.Session() as sess:
     width =  int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
+    # Scale used for output window size and net size
+    width_scale = 1
+    height_scale = 1
+    
+    if use_original_video_size_as_output_size:
+        width_scale = width / img_size
+        height_scale = height / img_size
+
+    def drawRectangleCV2(img, pt1, pt2, color, thickness, width_scale=width_scale, height_scale=height_scale):
+        point1 = (int(pt1[0] * width_scale), int(pt1[1] * height_scale))
+        point2 = (int(pt2[0] * width_scale), int(pt2[1] * height_scale))
+        return cv2.rectangle(img, point1, point2, color, thickness)
+    
+    def drawTextCV2(img, text, pt, font, font_scale, color, lineType, width_scale=width_scale, height_scale=height_scale):
+        pt = (int(pt[0] * width_scale), int(pt[1] * height_scale))
+        cv2.putText(img, text, pt, font, font_scale, color, lineType)
+    
+    def drawCircleCV2(img, center, radius, color, thickness, width_scale=width_scale, height_scale=height_scale):
+        center = (int(center[0] * width_scale), int(center[1] * height_scale))
+        cv2.circle(img, center, radius, color, thickness)
+
     #TODO: [nikola1011] Check this with latest python version (also update requirements.txt)
     # Checked with Python 3.7.4 (it works)
     # Python 3.5.6 does not support f-strings (next line will generate syntax error)
@@ -77,6 +94,8 @@ with tf.Session() as sess:
         
         # Frame must be resized to 'img_size' (because that's what YoloV3 accepts as input)
         img = cv2.resize(frame, (img_size, img_size))
+        # Output image is used for drawing annotations (tracking rectangles and detected classes) on the image
+        output_img = frame if use_original_video_size_as_output_size else img
         
         tracker_rects = []
 
@@ -102,22 +121,21 @@ with tf.Session() as sess:
             # Loop only through classes we are interested in
             for class_index in classes.keys():
                 local_count = 0
-                #TODO: [nikola1011] Consider deleting 'label' variable # Unify 'class' and 'label' term into one
-                label = classes[class_index]
+                class_name = classes[class_index]
 
                 # Loop through detected infos of a class we are interested in
                 for i in range(len(np_detections[class_index])):
                     box = np_detections[class_index][i] 
 
                     if np_detections[class_index][i][4] >= confidence_level:
-                        print("Detected ", label, " with confidence of ", np_detections[class_index][i][4])
+                        print("Detected ", class_name, " with confidence of ", np_detections[class_index][i][4])
 
                         local_count += 1
                         startX, startY, endX, endY = box[0], box[1], box[2], box[3]
                         
-                        cv2.rectangle(img, (startX, startY), (endX, endY), (0, 255, 0), 1)
-                        cv2.putText(img, label, (startX, startY), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 255), lineType=cv2.LINE_AA)
-                        
+                        drawRectangleCV2(output_img, (startX, startY), (endX, endY), (0, 255, 0), 1)
+                        drawTextCV2(output_img, class_name, (startX, startY), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 255), 1)
+
                         # Construct a dlib rectangle object from the bounding box coordinates and then start the dlib correlation
                         tracker = dlib.correlation_tracker()
                         rect = dlib.rectangle(int(startX), int(startY), int(endX), int(endY))
@@ -127,7 +145,7 @@ with tf.Session() as sess:
                         trackers.append(tracker)
 
                 # Write the total number of detected objects for a given class on this frame
-                print(label," : ", local_count)
+                print(class_name," : ", local_count)
         else:
             # If detection is not happening then track previously detected objects (if any)
             print("[TRACKING]")
@@ -149,7 +167,8 @@ with tf.Session() as sess:
                 tracker_rects.append((startX, startY, endX, endY))
                 
                 # Draw tracking rectangles
-                img = cv2.rectangle(img, (startX, startY), (endX, endY), (255, 0, 0), 1)
+                drawRectangleCV2(output_img, (startX, startY), (endX, endY), (255, 0, 0), 1)
+
 
 
         # Use the centroid tracker to associate the (1) old object centroids with (2) the newly computed object centroids
@@ -176,19 +195,16 @@ with tf.Session() as sess:
 
             # Draw both the ID of the object and the centroid of the object on the output frame
             object_id = "ID {}".format(objectID)
-            cv2.putText(img, object_id, (centroid[0] - 10, centroid[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-            cv2.circle(img, (centroid[0], centroid[1]), 2, (0, 255, 0), -1)
+            drawTextCV2(output_img, object_id, (centroid[0] - 10, centroid[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            drawCircleCV2(output_img, (centroid[0], centroid[1]), 2, (0, 255, 0), -1)
 
             # Display the total count so far
             total_str = "Total counted: " + str(total)
-            cv2.putText(img, total_str, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+            drawTextCV2(output_img, total_str, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
         # Display the current frame (with all annotations drawn up to this point)
-        # TODO: [nikola1011] Consider transforming detected box coordinates to draw them on original frame and not the 'resized to 416' one
-        #cv2.namedWindow(video_name, cv2.WINDOW_NORMAL)
-        #cv2.resizeWindow(video_name, 700, 700)
-        cv2.imshow(video_name, img)  
-
+        cv2.imshow(video_name, output_img)
+        
         key = cv2.waitKey(1) & 0xFF
         if key  == ord('q'): # QUIT (exits)
             break          
