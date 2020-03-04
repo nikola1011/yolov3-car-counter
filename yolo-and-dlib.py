@@ -1,5 +1,3 @@
-# TODO: Refactor all this Nikola .. Make this code pretty 
-
 from tracking.centroidtracker import CentroidTracker
 from tracking.trackableobject import TrackableObject
 import tensornets as nets
@@ -79,8 +77,6 @@ with tf.Session() as sess:
         center = (int(center[0] * width_scale), int(center[1] * height_scale))
         cv2.circle(img, center, radius, color, thickness)
 
-    #TODO: [nikola1011] Check this with latest python version (also update requirements.txt)
-    # Checked with Python 3.7.4 (it works)
     # Python 3.5.6 does not support f-strings (next line will generate syntax error)
     #print(f"Loaded {video_path}. Width: {width}, Height: {height}")
     print("Loaded {video_path}. Width: {width}, Height: {height}".format(video_path=video_path, width=width, height=height))
