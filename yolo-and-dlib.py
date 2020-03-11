@@ -45,7 +45,7 @@ all_classes = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "tra
               "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", \
               "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"]
 
-# Classes of interest (with their corresponsind indexes for easier looping)
+# Classes of interest (with their corresponding indexes for easier looping)
 classes = { 1 : 'bicycle', 2 : 'car', 3 : 'motorbike', 5 : 'bus', 7 : 'truck' }
 
 with tf.Session() as sess:
